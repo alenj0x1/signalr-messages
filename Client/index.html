@@ -36,10 +36,17 @@
       </header>
 
       <section id="group" class="bg-gray-700/50 p-10 rounded flex flex-col gap-3 w-full hidden">
-        <header>
+        <header class="flex flex-col gap-2">
           <h2 class="text-5xl font-semibold text-blue-200">
-            Group: <span id="group-id">#</span>
+            Group: <span id="group-id" class="font-normal">#</span>
           </h2>
+          <h3 class="text-4xl font-semibold text-blue-200">
+            User: <span id="user-session" class="font-normal">#</span>
+          </h3>
+          
+          <div class="self-end">
+            <span id="user-writing" class="text-base font-medium text-blue-300 hidden"><span> is writing...</span></span>
+          </div>
         </header>
 
         <!-- Messages container -->
@@ -50,7 +57,7 @@
 
           <!-- Write a message -->
           <div class="flex">
-            <input type="text" class="userMessageInput w-full text-gray-200 bg-gray-700 p-4 outline-none rounded-l focus:outline-gray-700/35" placeholder="Write a message">
+            <input oninput="userWriting()" type="text" class="userMessageInput w-full text-gray-200 bg-gray-700 p-4 outline-none rounded-l focus:outline-gray-700/35" placeholder="Write a message">
             <button class="bg-blue-500 px-4 rounded-r text-white font-medium" onclick="sendMessage()">Send</button>
           </div>
         </div>
@@ -63,6 +70,7 @@
       const connection = new signalR.HubConnectionBuilder().withUrl('http://localhost:5023/chathub').build();
       let currentUser = "";
       let currentGroup = "";
+      let usersWriting = [];
 
       // Establish the connection
       connection.start()
@@ -72,6 +80,35 @@
         .catch(() => {
           console.log('Connection with errors')
         });
+      
+      function userWriting() {
+        connection.invoke('MemberWriting', currentGroup, currentUser)
+      }
+      
+      connection.on('UserWriting', (user) => {
+        const userWriting = document.getElementById('user-writing');
+        
+        // If the current user who is typing, has already been added
+        if (usersWriting.includes(user)) return;
+        
+        // Add new user
+        usersWriting.push(user);
+        
+        // Set status text
+        userWriting.textContent = usersWriting.join(', ');
+        if (usersWriting.length > 1) userWriting.textContent += ' are writing...';
+        if (usersWriting.length === 1) userWriting.textContent += ' is writing...'
+        
+        // Displays the status
+        if (usersWriting.length > 0) userWriting.classList.remove('hidden')
+        
+        // Deletes status after 3 seconds
+        setTimeout(() => {
+          usersWriting.splice(usersWriting.indexOf(user), 1)
+          
+          if (usersWriting.length === 0) userWriting.classList.add('hidden')
+        }, 3000)
+      })
 
       // Send message in a Group
       function sendMessage() {
@@ -104,10 +141,13 @@
             const mainHeader = document.getElementById('main-header')
             const groupSection = document.getElementById('group');
             const groupId = document.getElementById('group-id');
+            const userSession = document.getElementById('user-session');
 
             currentUser = usernameInput.value;
             currentGroup = groupInput.value;
+            
             groupId.textContent = currentGroup;
+            userSession.textContent = currentUser;
 
             groupSection.classList.toggle('hidden')
             mainHeader.classList.toggle('hidden')

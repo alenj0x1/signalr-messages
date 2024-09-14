@@ -4,6 +4,11 @@ namespace SignalRMessages.Hubs;
 
 public class ChatHub : Hub
 {
+    public async Task MemberWriting(string groupId, string user)
+    {
+        await Clients.Group(groupId).SendAsync("UserWriting", user);
+    }
+    
     public async Task JoinGroup(string groupId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, groupId);
