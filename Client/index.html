@@ -118,7 +118,11 @@
 
         // Send the message using Invoke, to be received by the listener "ReceiveMessage".
         // This sends it to all clients that are connected to the same group as the current client.
-        connection.invoke('SendMessage', currentGroup, currentUser, sendMessage.value)
+        connection.invoke('SendMessage', {
+          groupId: currentGroup,
+          user: currentUser,
+          content: sendMessage.value,
+        })
           .then(() => {
             sendMessage.value = '';
           })
@@ -128,7 +132,7 @@
       }
 
       // Listening for new message to be sent
-      connection.on('ReceiveMessage', (user, message) => generateMessage(user, message));
+      connection.on('ReceiveMessage', (message) => generateMessage(message));
 
       function joinToGroup() {
         const usernameInput = document.querySelector('.usernameInput');
@@ -151,6 +155,8 @@
 
             groupSection.classList.toggle('hidden')
             mainHeader.classList.toggle('hidden')
+            
+            getMessagesCache();
 
             console.log('Connected to group');
           })
@@ -159,19 +165,27 @@
           })
       }
 
+      function getMessagesCache() {
+        fetch(`http://localhost:5023/api/Group/${currentGroup}`)
+                .then(res => res.json())
+                .then(messages => {
+                  messages.forEach(msg => generateMessage(msg))
+                })
+      }
 
       // Add the new message to the section
-      function generateMessage(user, message) {
+      function generateMessage(message) {
         const groupMessages = document.getElementById('group-messages')
 
         const newMessage = document.createElement('div');
-        newMessage.innerHTML = createMessage(user, message);
+        newMessage.innerHTML = createMessage(message);
 
         groupMessages.append(newMessage)
       }
 
       // Creates the HTML content of the message
-      function createMessage(user, message) {
+      function createMessage({ user, content }) {
+        console.log()
         return `
           <div class="group-message-container ${user === currentUser ? `bg-blue-800` : `bg-gray-800`} p-5 rounded flex flex-col gap-2">
             <header class="flex gap-2 items-center text-sm text-blue-200 font-semibold">
@@ -180,7 +194,7 @@
             </header>
 
             <div>
-              <span class="text-blue-200 font-medium">${message}</span>
+              <span class="text-blue-200 font-medium">${content}</span>
             </div>
 
             <footer>

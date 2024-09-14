@@ -1,10 +1,14 @@
+using SignalRMessages.Classes;
 using SignalRMessages.Hubs;
+using SignalRMessages.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSignalR();
-
 builder.Services.AddCors();
+builder.Services.AddSingleton<Cache<Message>>();
+builder.Services.AddControllers();
+
 
 var app = builder.Build();
 
@@ -17,5 +21,6 @@ app.UseCors(policy =>
         .AllowCredentials();
 });
 app.MapHub<ChatHub>("/chathub");
+app.MapControllers();
 
 app.Run();
