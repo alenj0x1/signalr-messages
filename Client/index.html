@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SignalR Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.11/signalr.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+      h1 {
+        font-family: 'Poppins', sans-serif;
+      }
+    </style>
+  </head>
+  <body class="flex items-start bg-gradient-to-b from-zinc-950 to-blue-950 min-h-screen">
+    <main class="flex flex-col w-full m-10 gap-4 items-center">
+      <header id="main-header" class="flex flex-col gap-4 items-center">
+        <h1 class="text-5xl font-semibold text-blue-200">SignalR Groups</h1>
+        
+        <div class="flex flex-col gap-3 bg-gray-700/50 p-10 rounded">
+          <div class="flex gap-3">
+            <label class="flex flex-col items-center text-blue-200 font-medium text-base gap-2">
+              Input your username
+              <input type="text" class="usernameInput text-center font-medium bg-gray-700 p-4 outline-none rounded focus:outline-gray-700/35">
+            </label>
+  
+            <label class="flex flex-col items-center text-blue-200 font-medium text-base gap-2">
+              Input your group private ID
+              <input type="text" class="groupInput text-center uppercase font-medium bg-gray-700 p-4 outline-none rounded focus:outline-gray-700/35">
+            </label>
+          </div>
+
+          <button class="flex justify-center font-medium items-center w-full bg-blue-500 p-4 rounded text-white hover:bg-blue-500/85 active:bg-blue-500/75" onclick="joinToGroup()">Join to group</button>
+        </div>
+      </header>
+
+      <section id="group" class="bg-gray-700/50 p-10 rounded flex flex-col gap-3 w-full hidden">
+        <header>
+          <h2 class="text-5xl font-semibold text-blue-200">
+            Group: <span id="group-id">#</span>
+          </h2>
+        </header>
+
+        <!-- Messages container -->
+        <div class="flex flex-col gap-3">
+          <div id="group-messages" class="flex flex-col gap-2 max-h-screen overflow-y-auto">
+
+          </div>
+
+          <!-- Write a message -->
+          <div class="flex">
+            <input type="text" class="userMessageInput w-full text-gray-200 bg-gray-700 p-4 outline-none rounded-l focus:outline-gray-700/35" placeholder="Write a message">
+            <button class="bg-blue-500 px-4 rounded-r text-white font-medium" onclick="sendMessage()">Send</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // Create the object to handle the connection. 
+      // Replace the content of withUrl with the exposed URL of your API and your Hub.
+      const connection = new signalR.HubConnectionBuilder().withUrl('http://localhost:5023/chathub').build();
+      let currentUser = "";
+      let currentGroup = "";
+
+      // Establish the connection
+      connection.start()
+        .then(() => {
+          console.log('Connection established')
+        })
+        .catch(() => {
+          console.log('Connection with errors')
+        });
+
+      // Send message in a Group
+      function sendMessage() {
+        const sendMessage = document.querySelector('.userMessageInput');
+
+        if (!sendMessage.value) return alert('The content of the message cannot be empty')
+
+        // Send the message using Invoke, to be received by the listener "ReceiveMessage".
+        // This sends it to all clients that are connected to the same group as the current client.
+        connection.invoke('SendMessage', currentGroup, currentUser, sendMessage.value)
+          .then(() => {
+            sendMessage.value = '';
+          })
+          .catch(() => {
+            console.log('Error to send message')
+          });
+      }
+
+      // Listening for new message to be sent
+      connection.on('ReceiveMessage', (user, message) => generateMessage(user, message));
+
+      function joinToGroup() {
+        const usernameInput = document.querySelector('.usernameInput');
+        const groupInput = document.querySelector('.groupInput')
+
+        if (!usernameInput.value || !groupInput.value) return alert('Enter your username and group id.');
+
+        connection.invoke('JoinGroup', groupInput.value)
+          .then(() => {
+            const mainHeader = document.getElementById('main-header')
+            const groupSection = document.getElementById('group');
+            const groupId = document.getElementById('group-id');
+
+            currentUser = usernameInput.value;
+            currentGroup = groupInput.value;
+            groupId.textContent = currentGroup;
+
+            groupSection.classList.toggle('hidden')
+            mainHeader.classList.toggle('hidden')
+
+            console.log('Connected to group');
+          })
+          .catch(() => {
+            console.log('Failed to join to group');
+          })
+      }
+
+
+      // Add the new message to the section
+      function generateMessage(user, message) {
+        const groupMessages = document.getElementById('group-messages')
+
+        const newMessage = document.createElement('div');
+        newMessage.innerHTML = createMessage(user, message);
+
+        groupMessages.append(newMessage)
+      }
+
+      // Creates the HTML content of the message
+      function createMessage(user, message) {
+        return `
+          <div class="group-message-container ${user === currentUser ? `bg-blue-800` : `bg-gray-800`} p-5 rounded flex flex-col gap-2">
+            <header class="flex gap-2 items-center text-sm text-blue-200 font-semibold">
+              <img class="flex h-8 bg-blue-200 rounded-full" src="https://static.thenounproject.com/png/65476-200.png" alt="user-icon">
+              <span>${user}</span>
+            </header>
+
+            <div>
+              <span class="text-blue-200 font-medium">${message}</span>
+            </div>
+
+            <footer>
+              <span class="text-sm text-blue-200">${new Date().toLocaleString()}</span>
+            </footer>
+          </div>
+        `
+      }
+    </script>
+  </body>
+</html>
