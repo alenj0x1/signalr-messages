@@ -67,7 +67,9 @@
     <script>
       // Create the object to handle the connection. 
       // Replace the content of withUrl with the exposed URL of your API and your Hub.
-      const connection = new signalR.HubConnectionBuilder().withUrl('http://localhost:5023/chathub').build();
+      const BASE_URL = 'http://localhost:3000'
+      const NAME_HUB = 'chathub'
+      const connection = new signalR.HubConnectionBuilder().withUrl(`${BASE_URL}/${NAME_HUB}`).build();
       let currentUser = "";
       let currentGroup = "";
       let usersWriting = [];
@@ -166,7 +168,7 @@
       }
 
       function getMessagesCache() {
-        fetch(`http://localhost:5023/api/Group/${currentGroup}`)
+        fetch(`${BASE_URL}/api/Group/${currentGroup}`)
                 .then(res => res.json())
                 .then(messages => {
                   messages.forEach(msg => generateMessage(msg))
